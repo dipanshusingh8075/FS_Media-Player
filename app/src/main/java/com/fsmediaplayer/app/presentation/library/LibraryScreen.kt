@@ -28,7 +28,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Movie
@@ -129,7 +129,7 @@ fun LibraryScreen(
                     if (uiState.activeFolder != null) {
                         IconButton(onClick = { viewModel.closeActiveFolder() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.rounded.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = TextPrimary
                             )
