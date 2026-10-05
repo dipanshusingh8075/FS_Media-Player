@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
                         LibraryScreen(
                             viewModel = libraryViewModel,
                             onVideoClick = { video ->
-                                playerManager.playMedia(video.contentUri, video.name)
+                                playerManager.playMedia(video.contentUri, video.title)
                                 navController.navigate(Screen.Player.route)
                             }
                         )

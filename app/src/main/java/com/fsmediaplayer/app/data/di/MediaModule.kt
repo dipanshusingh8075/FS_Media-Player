@@ -1,6 +1,6 @@
 package com.fsmediaplayer.app.data.di
 
-import com.fsmediaplayer.app.data.repository.MediaStoreVideoRepositoryImpl
+import com.fsmediaplayer.app.data.repository.VideoRepositoryImpl
 import com.fsmediaplayer.app.domain.repository.VideoRepository
 import dagger.Binds
 import dagger.Module
@@ -10,11 +10,11 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+abstract class MediaModule {
 
     @Binds
     @Singleton
     abstract fun bindVideoRepository(
-        impl: MediaStoreVideoRepositoryImpl
+        videoRepositoryImpl: VideoRepositoryImpl
     ): VideoRepository
 }

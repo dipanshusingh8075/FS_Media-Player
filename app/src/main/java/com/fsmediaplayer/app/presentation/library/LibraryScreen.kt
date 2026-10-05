@@ -40,7 +40,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -55,7 +54,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +63,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
-import com.fsmediaplayer.app.core.designsystem.theme.CyberEmerald
 import com.fsmediaplayer.app.core.designsystem.theme.ElectricCyan
 import com.fsmediaplayer.app.core.designsystem.theme.GlassBlack80
 import com.fsmediaplayer.app.core.designsystem.theme.GlassWhite10
@@ -75,19 +72,17 @@ import com.fsmediaplayer.app.core.designsystem.theme.SurfaceContainerHigh
 import com.fsmediaplayer.app.core.designsystem.theme.TextMuted
 import com.fsmediaplayer.app.core.designsystem.theme.TextPrimary
 import com.fsmediaplayer.app.core.designsystem.theme.TextSecondary
-import com.fsmediaplayer.app.core.model.VideoFolder
-import com.fsmediaplayer.app.core.model.VideoItem
+import com.fsmediaplayer.app.core.model.VideoMediaItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel,
-    onVideoClick: (VideoItem) -> Unit,
+    onVideoClick: (VideoMediaItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Scoped storage permission launcher (Android 13+ vs Android 12 & below)
     val permissionToRequest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_VIDEO
     } else {
@@ -155,24 +150,20 @@ fun LibraryScreen(
                 .padding(innerPadding)
         ) {
             if (!uiState.hasStoragePermission) {
-                // Permission Request State
                 PermissionPromptContent(
                     onRequestPermission = { permissionLauncher.launch(permissionToRequest) }
                 )
             } else if (uiState.isLoading) {
-                // Loading State
                 CircularProgressIndicator(
                     color = ElectricCyan,
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else if (uiState.activeFolder != null) {
-                // Videos within active folder
                 VideoList(
-                    videos = uiState.folderVideos,
+                    videos = uiState.activeFolder!!.videos,
                     onVideoClick = onVideoClick
                 )
             } else {
-                // Folder vs Flat List tabs
                 Column(modifier = Modifier.fillMaxSize()) {
                     PrimaryTabRow(
                         selectedTabIndex = uiState.selectedTab.ordinal,
@@ -238,8 +229,8 @@ fun LibraryScreen(
 
 @Composable
 private fun FolderGrid(
-    folders: List<VideoFolder>,
-    onFolderClick: (VideoFolder) -> Unit
+    folders: List<VideoFolderItem>,
+    onFolderClick: (VideoFolderItem) -> Unit
 ) {
     if (folders.isEmpty()) {
         EmptyState(message = "No video folders discovered")
@@ -252,7 +243,7 @@ private fun FolderGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(folders, key = { it.id }) { folder ->
+        items(folders, key = { it.name }) { folder ->
             FolderCard(folder = folder, onClick = { onFolderClick(folder) })
         }
     }
@@ -260,7 +251,7 @@ private fun FolderGrid(
 
 @Composable
 private fun FolderCard(
-    folder: VideoFolder,
+    folder: VideoFolderItem,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -272,7 +263,6 @@ private fun FolderCard(
             .border(1.dp, GlassWhite10, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
     ) {
-        // Thumbnail from first video
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,7 +291,6 @@ private fun FolderCard(
                 )
             }
 
-            // Video count badge
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -319,7 +308,6 @@ private fun FolderCard(
             }
         }
 
-        // Folder Title and Size
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -345,8 +333,8 @@ private fun FolderCard(
 
 @Composable
 private fun VideoList(
-    videos: List<VideoItem>,
-    onVideoClick: (VideoItem) -> Unit
+    videos: List<VideoMediaItem>,
+    onVideoClick: (VideoMediaItem) -> Unit
 ) {
     if (videos.isEmpty()) {
         EmptyState(message = "No videos found in this view")
@@ -365,7 +353,7 @@ private fun VideoList(
 
 @Composable
 private fun VideoListItem(
-    video: VideoItem,
+    video: VideoMediaItem,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -380,7 +368,6 @@ private fun VideoListItem(
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Thumbnail with Duration pill
         Box(
             modifier = Modifier
                 .width(120.dp)
@@ -394,12 +381,11 @@ private fun VideoListItem(
                     .videoFrameMillis(2000)
                     .crossfade(true)
                     .build(),
-                contentDescription = video.name,
+                contentDescription = video.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Duration Pill
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -419,10 +405,9 @@ private fun VideoListItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Video metadata
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = video.name,
+                text = video.title,
                 color = TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,

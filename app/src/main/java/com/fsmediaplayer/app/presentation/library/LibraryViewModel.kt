@@ -2,8 +2,7 @@ package com.fsmediaplayer.app.presentation.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fsmediaplayer.app.core.model.VideoFolder
-import com.fsmediaplayer.app.core.model.VideoItem
+import com.fsmediaplayer.app.core.model.VideoMediaItem
 import com.fsmediaplayer.app.domain.usecase.GetVideoFoldersUseCase
 import com.fsmediaplayer.app.domain.usecase.GetVideosUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,12 +19,33 @@ enum class LibraryTab {
     ALL_VIDEOS
 }
 
+data class VideoFolderItem(
+    val name: String,
+    val videos: List<VideoMediaItem>
+) {
+    val videoCount: Int get() = videos.size
+    val firstVideoUri get() = videos.firstOrNull()?.contentUri
+    val totalSizeBytes: Long get() = videos.sumOf { it.sizeBytes }
+
+    val formattedTotalSize: String
+        get() {
+            val kb = totalSizeBytes / 1024.0
+            val mb = kb / 1024.0
+            val gb = mb / 1024.0
+            return when {
+                gb >= 1.0 -> String.format("%.2f GB", gb)
+                mb >= 1.0 -> String.format("%.1f MB", mb)
+                else -> String.format("%.0f KB", kb)
+            }
+        }
+}
+
 data class LibraryUiState(
     val selectedTab: LibraryTab = LibraryTab.FOLDERS,
-    val folders: List<VideoFolder> = emptyList(),
-    val allVideos: List<VideoItem> = emptyList(),
-    val folderVideos: List<VideoItem> = emptyList(),
-    val activeFolder: VideoFolder? = null,
+    val folderMap: Map<String, List<VideoMediaItem>> = emptyMap(),
+    val folders: List<VideoFolderItem> = emptyList(),
+    val allVideos: List<VideoMediaItem> = emptyList(),
+    val activeFolder: VideoFolderItem? = null,
     val isLoading: Boolean = true,
     val hasStoragePermission: Boolean = false,
     val errorMessage: String? = null
@@ -49,19 +69,12 @@ class LibraryViewModel @Inject constructor(
         _uiState.update { it.copy(selectedTab = tab, activeFolder = null) }
     }
 
-    fun openFolder(folder: VideoFolder) {
+    fun openFolder(folder: VideoFolderItem) {
         _uiState.update { it.copy(activeFolder = folder) }
-        viewModelScope.launch {
-            getVideosUseCase(folder.id)
-                .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
-                .collect { videos ->
-                    _uiState.update { it.copy(folderVideos = videos) }
-                }
-        }
     }
 
     fun closeActiveFolder() {
-        _uiState.update { it.copy(activeFolder = null, folderVideos = emptyList()) }
+        _uiState.update { it.copy(activeFolder = null) }
     }
 
     private fun loadMediaLibrary() {
@@ -70,8 +83,18 @@ class LibraryViewModel @Inject constructor(
             launch {
                 getVideoFoldersUseCase()
                     .catch { e -> _uiState.update { it.copy(errorMessage = e.message, isLoading = false) } }
-                    .collect { folders ->
-                        _uiState.update { it.copy(folders = folders, isLoading = false) }
+                    .collect { folderMap ->
+                        val folderList = folderMap.map { (name, videos) ->
+                            VideoFolderItem(name = name, videos = videos)
+                        }.sortedByDescending { it.videoCount }
+
+                        _uiState.update {
+                            it.copy(
+                                folderMap = folderMap,
+                                folders = folderList,
+                                isLoading = false
+                            )
+                        }
                     }
             }
 
